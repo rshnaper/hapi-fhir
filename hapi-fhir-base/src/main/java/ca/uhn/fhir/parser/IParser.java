@@ -4,7 +4,7 @@ package ca.uhn.fhir.parser;
  * #%L
  * HAPI FHIR - Core Library
  * %%
- * Copyright (C) 2014 - 2017 University Health Network
+ * Copyright (C) 2014 - 2018 University Health Network
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -205,6 +205,22 @@ public interface IParser {
 	 * @see #setDontEncodeElements(Set)
 	 */
 	void setEncodeElements(Set<String> theEncodeElements);
+
+	/**
+	 * If set to <code>true</code> (default is false), the values supplied
+	 * to {@link #setEncodeElements(Set)} will not be applied to the root
+	 * resource (typically a Bundle), but will be applied to any sub-resources
+	 * contained within it (i.e. search result resources in that bundle)
+	 */
+	void setEncodeElementsAppliesToChildResourcesOnly(boolean theEncodeElementsAppliesToChildResourcesOnly);
+
+	/**
+	 * If set to <code>true</code> (default is false), the values supplied
+	 * to {@link #setEncodeElements(Set)} will not be applied to the root
+	 * resource (typically a Bundle), but will be applied to any sub-resources
+	 * contained within it (i.e. search result resources in that bundle)
+	 */
+	boolean isEncodeElementsAppliesToChildResourcesOnly();
 
 	/**
 	 * If provided, tells the parse which resource types to apply {@link #setEncodeElements(Set) encode elements} to. Any

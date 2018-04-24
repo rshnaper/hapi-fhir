@@ -29,7 +29,7 @@ import ca.uhn.fhir.util.*;
  * #%L
  * HAPI FHIR - Client Framework
  * %%
- * Copyright (C) 2014 - 2017 University Health Network
+ * Copyright (C) 2014 - 2018 University Health Network
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -209,9 +209,9 @@ public class MethodUtil {
 			for (String nextValue : nextEntry.getValue()) {
 				b.append(haveQuestionMark ? '&' : '?');
 				haveQuestionMark = true;
-				b.append(UrlUtil.escape(nextEntry.getKey()));
+				b.append(UrlUtil.escapeUrlParam(nextEntry.getKey()));
 				b.append('=');
-				b.append(UrlUtil.escape(nextValue));
+				b.append(UrlUtil.escapeUrlParam(nextValue));
 			}
 		}
 		return b;

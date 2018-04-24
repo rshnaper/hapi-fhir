@@ -45,6 +45,7 @@ import java.util.concurrent.TimeUnit;
 
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
+
 public abstract class BaseResourceProviderDstu3Test extends BaseJpaDstu3Test {
 
 	protected static JpaValidationSupportChainDstu3 myValidationSupport;
@@ -52,16 +53,16 @@ public abstract class BaseResourceProviderDstu3Test extends BaseJpaDstu3Test {
 	protected static CloseableHttpClient ourHttpClient;
 	protected static int ourPort;
 	protected static RestfulServer ourRestServer;
-	private static Server ourServer;
 	protected static String ourServerBase;
 	protected static GenericWebApplicationContext ourWebApplicationContext;
-	private TerminologyUploaderProviderDstu3 myTerminologyUploaderProvider;
 	protected static SearchParamRegistryDstu3 ourSearchParamRegistry;
 	protected static DatabaseBackedPagingProvider ourPagingProvider;
 	protected static SubscriptionRestHookInterceptor ourRestHookSubscriptionInterceptor;
 	protected static SubscriptionEmailInterceptor ourEmailSubscriptionInterceptor;
 	protected static ISearchDao mySearchEntityDao;
 	protected static ISearchCoordinatorSvc mySearchCoordinatorSvc;
+	private static Server ourServer;
+	private TerminologyUploaderProviderDstu3 myTerminologyUploaderProvider;
 
 	public BaseResourceProviderDstu3Test() {
 		super();

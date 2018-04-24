@@ -6,7 +6,7 @@ import static org.apache.commons.lang3.StringUtils.isNotBlank;
  * #%L
  * HAPI FHIR - Server Framework
  * %%
- * Copyright (C) 2014 - 2017 University Health Network
+ * Copyright (C) 2014 - 2018 University Health Network
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -52,6 +52,7 @@ class RuleImplOp extends BaseRule /* implements IAuthRule */ {
 	private RuleOpEnum myOp;
 	private TransactionAppliesToEnum myTransactionAppliesToOp;
 	private List<IIdType> myAppliesToInstances;
+	private RuleBuilder.ITenantApplicabilityChecker myTenantApplicabilityChecker;
 
 	public RuleImplOp(String theRuleName) {
 		super(theRuleName);
@@ -60,6 +61,13 @@ class RuleImplOp extends BaseRule /* implements IAuthRule */ {
 	@Override
 	public Verdict applyRule(RestOperationTypeEnum theOperation, RequestDetails theRequestDetails, IBaseResource theInputResource, IIdType theInputResourceId, IBaseResource theOutputResource,
 			IRuleApplier theRuleApplier) {
+
+		if (myTenantApplicabilityChecker != null) {
+			if (!myTenantApplicabilityChecker.applies(theRequestDetails)) {
+				return null;
+			}
+		}
+
 		FhirContext ctx = theRequestDetails.getServer().getFhirContext();
 
 		IBaseResource appliesToResource;
@@ -165,13 +173,15 @@ class RuleImplOp extends BaseRule /* implements IAuthRule */ {
 				}
 				return verdict;
 			} else if (theOutputResource != null) {
-				List<BundleEntryParts> inputResources = BundleUtil.toListOfEntries(ctx, (IBaseBundle) theInputResource);
+
+				List<IBaseResource> outputResources = AuthorizationInterceptor.toListOfResourcesAndExcludeContainer(theOutputResource, theRequestDetails.getFhirContext());
+
 				Verdict verdict = null;
-				for (BundleEntryParts nextPart : inputResources) {
-					if (nextPart.getResource() == null) {
+				for (IBaseResource nextResource : outputResources) {
+					if (nextResource == null) {
 						continue;
 					}
-					Verdict newVerdict = theRuleApplier.applyRulesAndReturnDecision(RestOperationTypeEnum.READ, theRequestDetails, null, null, nextPart.getResource());
+					Verdict newVerdict = theRuleApplier.applyRulesAndReturnDecision(RestOperationTypeEnum.READ, theRequestDetails, null, null, nextResource);
 					if (newVerdict == null) {
 						continue;
 					} else if (verdict == null) {
@@ -225,7 +235,7 @@ class RuleImplOp extends BaseRule /* implements IAuthRule */ {
 					return null;
 				}
 			}
-			if (appliesToResourceId != null) {
+			if (appliesToResourceId != null && appliesToResourceId.hasResourceType()) {
 				Class<? extends IBaseResource> type = theRequestDetails.getServer().getFhirContext().getResourceDefinition(appliesToResourceId.getResourceType()).getImplementingClass();
 				if (myAppliesToTypes.contains(type) == false) {
 					return null;
@@ -273,6 +283,10 @@ class RuleImplOp extends BaseRule /* implements IAuthRule */ {
 		return newVerdict();
 	}
 
+	public void setTenantApplicabilityChecker(RuleBuilder.ITenantApplicabilityChecker theTenantApplicabilityChecker) {
+		myTenantApplicabilityChecker = theTenantApplicabilityChecker;
+	}
+
 	@Override
 	public String toString() {
 		ToStringBuilder builder = new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE);
@@ -280,6 +294,7 @@ class RuleImplOp extends BaseRule /* implements IAuthRule */ {
 		builder.append("transactionAppliesToOp", myTransactionAppliesToOp);
 		builder.append("appliesTo", myAppliesTo);
 		builder.append("appliesToTypes", myAppliesToTypes);
+		builder.append("appliesToTenant", myTenantApplicabilityChecker);
 		builder.append("classifierCompartmentName", myClassifierCompartmentName);
 		builder.append("classifierCompartmentOwners", myClassifierCompartmentOwners);
 		builder.append("classifierType", myClassifierType);

@@ -4,7 +4,7 @@ package ca.uhn.fhir.rest.client.impl;
  * #%L
  * HAPI FHIR - Client Framework
  * %%
- * Copyright (C) 2014 - 2017 University Health Network
+ * Copyright (C) 2014 - 2018 University Health Network
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -130,19 +130,6 @@ public class GenericClient extends BaseClient implements IGenericClient {
 
 	}
 
-	// public IResource read(UriDt url) {
-	// return read(inferResourceClass(url), url);
-	// }
-	//
-	// @SuppressWarnings("unchecked")
-	// public <T extends IResource> T read(final Class<T> theType, UriDt url) {
-	// return (T) invoke(theType, url, new ResourceResponseHandler<T>(theType));
-	// }
-	//
-	// public Bundle search(UriDt url) {
-	// return search(inferResourceClass(url), url);
-	// }
-
 	@Override
 	public IFetchConformanceUntyped fetchConformance() {
 		return new FetchConformanceInternal();
@@ -168,11 +155,6 @@ public class GenericClient extends BaseClient implements IGenericClient {
 		}
 		return theResource.getIdElement().getIdPart();
 	}
-
-	// @Override
-	// public <T extends IBaseResource> T read(final Class<T> theType, IdDt theId) {
-	// return doReadOrVRead(theType, theId, false, null, null);
-	// }
 
 	@Override
 	public IHistory history() {
@@ -354,7 +336,7 @@ public class GenericClient extends BaseClient implements IGenericClient {
 				case '?':
 				case '$':
 				case ':':
-					b.append(UrlUtil.escape(Character.toString(nextChar)));
+					b.append(UrlUtil.escapeUrlParam(Character.toString(nextChar)));
 					break;
 				default:
 					b.append(nextChar);
@@ -914,11 +896,11 @@ public class GenericClient extends BaseClient implements IGenericClient {
 			IBaseParameters parameters = ParametersUtil.newInstance(myContext);
 			switch (myOperation) {
 			case ADD:
-				ParametersUtil.addParameterToParameters(myContext, parameters, myMeta, "meta");
+				ParametersUtil.addParameterToParameters(myContext, parameters, "meta", myMeta);
 				invocation = OperationMethodBinding.createOperationInvocation(myContext, myId.getResourceType(), myId.getIdPart(), "$meta-add", parameters, false);
 				break;
 			case DELETE:
-				ParametersUtil.addParameterToParameters(myContext, parameters, myMeta, "meta");
+				ParametersUtil.addParameterToParameters(myContext, parameters, "meta", myMeta);
 				invocation = OperationMethodBinding.createOperationInvocation(myContext, myId.getResourceType(), myId.getIdPart(), "$meta-delete", parameters, false);
 				break;
 			case GET:

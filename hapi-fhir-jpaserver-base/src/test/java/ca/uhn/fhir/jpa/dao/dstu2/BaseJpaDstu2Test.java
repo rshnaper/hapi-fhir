@@ -4,6 +4,8 @@ import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.jpa.config.TestDstu2Config;
 import ca.uhn.fhir.jpa.dao.*;
 import ca.uhn.fhir.jpa.dao.data.IResourceIndexedSearchParamStringDao;
+import ca.uhn.fhir.jpa.dao.data.IResourceIndexedSearchParamTokenDao;
+import ca.uhn.fhir.jpa.dao.data.IResourceLinkDao;
 import ca.uhn.fhir.jpa.dao.data.IResourceTableDao;
 import ca.uhn.fhir.jpa.entity.ResourceIndexedSearchParamString;
 import ca.uhn.fhir.jpa.entity.ResourceTable;
@@ -46,10 +48,15 @@ import static org.mockito.Mockito.mock;
 @ContextConfiguration(classes = {TestDstu2Config.class})
 public abstract class BaseJpaDstu2Test extends BaseJpaTest {
 	@Autowired
+	protected ISearchParamRegistry mySearchParamRegsitry;
+	@Autowired
 	protected ApplicationContext myAppCtx;
 	@Autowired
 	@Qualifier("myAppointmentDaoDstu2")
 	protected IFhirResourceDao<Appointment> myAppointmentDao;
+	@Autowired
+	@Qualifier("mySearchParameterDaoDstu2")
+	protected IFhirResourceDao<SearchParameter> mySearchParameterDao;
 	@Autowired
 	@Qualifier("myBundleDaoDstu2")
 	protected IFhirResourceDao<Bundle> myBundleDao;
@@ -67,6 +74,9 @@ public abstract class BaseJpaDstu2Test extends BaseJpaTest {
 	@Autowired
 	@Qualifier("myDiagnosticReportDaoDstu2")
 	protected IFhirResourceDao<DiagnosticReport> myDiagnosticReportDao;
+	@Autowired
+	@Qualifier("myBinaryDaoDstu2")
+	protected IFhirResourceDao<Binary> myBinaryDao;
 	@Autowired
 	@Qualifier("myEncounterDaoDstu2")
 	protected IFhirResourceDao<Encounter> myEncounterDao;
@@ -107,6 +117,9 @@ public abstract class BaseJpaDstu2Test extends BaseJpaTest {
 	@Qualifier("myPatientDaoDstu2")
 	protected IFhirResourceDaoPatient<Patient> myPatientDao;
 	@Autowired
+	@Qualifier("myGroupDaoDstu2")
+	protected IFhirResourceDao<Group> myGroupDao;
+	@Autowired
 	@Qualifier("myPractitionerDaoDstu2")
 	protected IFhirResourceDao<Practitioner> myPractitionerDao;
 	@Autowired
@@ -135,6 +148,10 @@ public abstract class BaseJpaDstu2Test extends BaseJpaTest {
 	protected IFhirResourceDao<Substance> mySubstanceDao;
 	@Autowired
 	protected IResourceIndexedSearchParamStringDao myResourceIndexedSearchParamStringDao;
+	@Autowired
+	protected IResourceIndexedSearchParamTokenDao myResourceIndexedSearchParamTokenDao;
+	@Autowired
+	protected IResourceLinkDao myResourceLinkDao;
 	@Autowired
 	protected IResourceTableDao myResourceTableDao;
 	@Autowired

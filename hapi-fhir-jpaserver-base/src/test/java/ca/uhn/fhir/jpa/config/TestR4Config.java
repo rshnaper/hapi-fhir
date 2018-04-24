@@ -8,6 +8,7 @@ import net.ttddyy.dsproxy.listener.logging.SLF4JLogLevel;
 import net.ttddyy.dsproxy.support.ProxyDataSourceBuilder;
 import org.apache.commons.dbcp2.BasicDataSource;
 import org.hibernate.jpa.HibernatePersistenceProvider;
+import org.hibernate.query.criteria.LiteralHandlingMode;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
@@ -29,6 +30,17 @@ import static org.junit.Assert.*;
 public class TestR4Config extends BaseJavaConfigR4 {
 
 	static final org.slf4j.Logger ourLog = org.slf4j.LoggerFactory.getLogger(TestR4Config.class);
+	private static int ourMaxThreads;
+
+	static {
+		/*
+		 * We use a randomized number of maximum threads in order to try
+		 * and catch any potential deadlocks caused by database connection
+		 * starvation
+		 */
+		ourMaxThreads = (int) (Math.random() * 6.0) + 1;
+	}
+
 	private Exception myLastStackTrace;
 
 	@Bean()
@@ -49,7 +61,7 @@ public class TestR4Config extends BaseJavaConfigR4 {
 				} catch (Exception e) {
 					ourLog.error("Exceeded maximum wait for connection", e);
 					logGetConnectionStackTrace();
-//					if ("true".equals(System.getProperty("ci"))) {
+//					if ("true".equals(System.getStringProperty("ci"))) {
 					fail("Exceeded maximum wait for connection: " + e.toString());
 //					}
 //					System.exit(1);
@@ -84,22 +96,16 @@ public class TestR4Config extends BaseJavaConfigR4 {
 
 		};
 		retVal.setDriver(new org.apache.derby.jdbc.EmbeddedDriver());
-		retVal.setUrl("jdbc:derby:memory:myUnitTestDB;create=true");
+		retVal.setUrl("jdbc:derby:memory:myUnitTestDBR4;create=true");
 		retVal.setMaxWaitMillis(10000);
 		retVal.setUsername("");
 		retVal.setPassword("");
 
-		/*
-		 * We use a randomized number of maximum threads in order to try
-		 * and catch any potential deadlocks caused by database connection
-		 * starvation
-		 */
-		int maxThreads = (int) (Math.random() * 6.0) + 1;
-		retVal.setMaxTotal(maxThreads);
+		retVal.setMaxTotal(ourMaxThreads);
 
 		DataSource dataSource = ProxyDataSourceBuilder
 			.create(retVal)
-//			.logQueryBySlf4j(SLF4JLogLevel.INFO, "SQL")
+			.logQueryBySlf4j(SLF4JLogLevel.INFO, "SQL")
 			.logSlowQueryBySlf4j(10, TimeUnit.SECONDS)
 			.countQuery(new ThreadQueryCountHolder())
 			.build();
@@ -125,9 +131,12 @@ public class TestR4Config extends BaseJavaConfigR4 {
 		extraProperties.put("hibernate.show_sql", "false");
 		extraProperties.put("hibernate.hbm2ddl.auto", "update");
 		extraProperties.put("hibernate.dialect", "org.hibernate.dialect.DerbyTenSevenDialect");
+		extraProperties.put("hibernate.search.model_mapping", ca.uhn.fhir.jpa.search.LuceneSearchMappingFactory.class.getName());
 		extraProperties.put("hibernate.search.default.directory_provider", "ram");
 		extraProperties.put("hibernate.search.lucene_version", "LUCENE_CURRENT");
 		extraProperties.put("hibernate.search.autoregister_listeners", "true");
+		extraProperties.put("hibernate.criteria.literal_handling_mode", LiteralHandlingMode.BIND);
+
 		return extraProperties;
 	}
 
@@ -151,6 +160,10 @@ public class TestR4Config extends BaseJavaConfigR4 {
 		JpaTransactionManager retVal = new JpaTransactionManager();
 		retVal.setEntityManagerFactory(entityManagerFactory);
 		return retVal;
+	}
+
+	public static int getMaxThreads() {
+		return ourMaxThreads;
 	}
 
 }

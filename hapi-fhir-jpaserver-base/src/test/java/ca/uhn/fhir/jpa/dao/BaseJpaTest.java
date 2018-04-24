@@ -1,38 +1,12 @@
 package ca.uhn.fhir.jpa.dao;
 
-import static org.junit.Assert.fail;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.sql.SQLException;
-import java.util.*;
-import java.util.concurrent.Callable;
-
-import javax.persistence.EntityManager;
-
-import ca.uhn.fhir.jpa.util.StopWatch;
-import ca.uhn.fhir.model.dstu2.resource.Observation;
-import org.apache.commons.io.IOUtils;
-import org.hibernate.search.jpa.Search;
-import org.hl7.fhir.dstu3.model.Bundle.BundleEntryComponent;
-import org.hl7.fhir.dstu3.model.Resource;
-import org.hl7.fhir.instance.model.api.*;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.mockito.Mockito;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.TransactionStatus;
-import org.springframework.transaction.support.TransactionCallback;
-import org.springframework.transaction.support.TransactionTemplate;
-
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.jpa.entity.*;
 import ca.uhn.fhir.jpa.provider.SystemProviderDstu2Test;
 import ca.uhn.fhir.jpa.search.ISearchCoordinatorSvc;
 import ca.uhn.fhir.jpa.sp.ISearchParamPresenceSvc;
 import ca.uhn.fhir.jpa.term.VersionIndependentConcept;
+import ca.uhn.fhir.util.StopWatch;
 import ca.uhn.fhir.model.dstu2.resource.Bundle;
 import ca.uhn.fhir.model.dstu2.resource.Bundle.Entry;
 import ca.uhn.fhir.rest.api.server.IBundleProvider;
@@ -41,6 +15,31 @@ import ca.uhn.fhir.rest.server.interceptor.IServerInterceptor;
 import ca.uhn.fhir.rest.server.servlet.ServletRequestDetails;
 import ca.uhn.fhir.util.BundleUtil;
 import ca.uhn.fhir.util.TestUtil;
+import org.apache.commons.io.IOUtils;
+import org.hibernate.search.jpa.Search;
+import org.hl7.fhir.dstu3.model.Bundle.BundleEntryComponent;
+import org.hl7.fhir.dstu3.model.Resource;
+import org.hl7.fhir.instance.model.api.IBaseBundle;
+import org.hl7.fhir.instance.model.api.IBaseResource;
+import org.hl7.fhir.instance.model.api.IIdType;
+import org.junit.After;
+import org.junit.AfterClass;
+import org.junit.Before;
+import org.mockito.Mockito;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.TransactionCallback;
+import org.springframework.transaction.support.TransactionTemplate;
+
+import javax.persistence.EntityManager;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.*;
+import java.util.concurrent.Callable;
+
+import static org.junit.Assert.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public abstract class BaseJpaTest {
 
@@ -49,16 +48,31 @@ public abstract class BaseJpaTest {
 	protected ArrayList<IServerInterceptor> myServerInterceptorList;
 	protected IRequestOperationCallback myRequestOperationCallback = mock(IRequestOperationCallback.class);
 
+	@After
+	public final void afterPerformCleanup() {
+		BaseHapiFhirResourceDao.setDisableIncrementOnUpdateForUnitTest(false);
+	}
+
 	@Before
 	public void beforeCreateSrd() {
 		mySrd = mock(ServletRequestDetails.class, Mockito.RETURNS_DEEP_STUBS);
 		when(mySrd.getRequestOperationCallback()).thenReturn(myRequestOperationCallback);
-		myServerInterceptorList = new ArrayList<IServerInterceptor>();
+		myServerInterceptorList = new ArrayList<>();
 		when(mySrd.getServer().getInterceptors()).thenReturn(myServerInterceptorList);
-		when(mySrd.getUserData()).thenReturn(new HashMap<Object, Object>());
+		when(mySrd.getUserData()).thenReturn(new HashMap<>());
 	}
 
 	protected abstract FhirContext getContext();
+
+	/**
+	 * Sleep until at least 1 ms has elapsed
+	 */
+	public void sleepUntilTimeChanges() throws InterruptedException {
+		StopWatch sw = new StopWatch();
+		while (sw.getMillis() == 0) {
+			Thread.sleep(10);
+		}
+	}
 
 	protected org.hl7.fhir.dstu3.model.Bundle toBundle(IBundleProvider theSearch) {
 		org.hl7.fhir.dstu3.model.Bundle bundle = new org.hl7.fhir.dstu3.model.Bundle();
@@ -76,11 +90,11 @@ public abstract class BaseJpaTest {
 		return bundle;
 	}
 
-	@SuppressWarnings({ "rawtypes" })
+	@SuppressWarnings({"rawtypes"})
 	protected List toList(IBundleProvider theSearch) {
 		return theSearch.getResources(0, theSearch.size());
 	}
-	
+
 	protected List<String> toUnqualifiedIdValues(IBaseBundle theFound) {
 		List<String> retVal = new ArrayList<String>();
 
@@ -143,12 +157,26 @@ public abstract class BaseJpaTest {
 	}
 
 	protected List<IIdType> toUnqualifiedVersionlessIds(IBundleProvider theFound) {
-		List<IIdType> retVal = new ArrayList<IIdType>();
-		int size = theFound.size();
+		List<IIdType> retVal = new ArrayList<>();
+		Integer size = theFound.size();
+		StopWatch sw = new StopWatch();
+		while (size == null) {
+			int timeout = 20000;
+			if (sw.getMillis() > timeout) {
+				fail("Waited over "+timeout+"ms for search");
+			}
+			try {
+				Thread.sleep(100);
+			} catch (InterruptedException theE) {
+				//ignore
+			}
+			size = theFound.size();
+		}
+
 		ourLog.info("Found {} results", size);
 		List<IBaseResource> resources = theFound.getResources(0, size);
 		for (IBaseResource next : resources) {
-			retVal.add((IIdType) next.getIdElement().toUnqualifiedVersionless());
+			retVal.add(next.getIdElement().toUnqualifiedVersionless());
 		}
 		return retVal;
 	}
@@ -156,7 +184,7 @@ public abstract class BaseJpaTest {
 	protected List<IIdType> toUnqualifiedVersionlessIds(List<IBaseResource> theFound) {
 		List<IIdType> retVal = new ArrayList<IIdType>();
 		for (IBaseResource next : theFound) {
-			retVal.add((IIdType) next.getIdElement().toUnqualifiedVersionless());
+			retVal.add(next.getIdElement().toUnqualifiedVersionless());
 		}
 		return retVal;
 	}
@@ -195,7 +223,7 @@ public abstract class BaseJpaTest {
 	}
 
 	@AfterClass
-	public static void afterClassShutdownDerby() throws SQLException {
+	public static void afterClassShutdownDerby() {
 		// DriverManager.getConnection("jdbc:derby:;shutdown=true");
 		// try {
 		// DriverManager.getConnection("jdbc:derby:memory:myUnitTestDB;drop=true");
@@ -214,9 +242,9 @@ public abstract class BaseJpaTest {
 	}
 
 	public static void purgeDatabase(final EntityManager entityManager, PlatformTransactionManager theTxManager, ISearchParamPresenceSvc theSearchParamPresenceSvc, ISearchCoordinatorSvc theSearchCoordinatorSvc, ISearchParamRegistry theSearchParamRegistry) {
-		
+
 		theSearchCoordinatorSvc.cancelAllActiveSearches();
-		
+
 		TransactionTemplate txTemplate = new TransactionTemplate(theTxManager);
 		txTemplate.setPropagationBehavior(TransactionTemplate.PROPAGATION_REQUIRED);
 		txTemplate.execute(new TransactionCallback<Void>() {
@@ -224,6 +252,7 @@ public abstract class BaseJpaTest {
 			public Void doInTransaction(TransactionStatus theStatus) {
 				entityManager.createQuery("UPDATE " + ResourceHistoryTable.class.getSimpleName() + " d SET d.myForcedId = null").executeUpdate();
 				entityManager.createQuery("UPDATE " + ResourceTable.class.getSimpleName() + " d SET d.myForcedId = null").executeUpdate();
+				entityManager.createQuery("UPDATE " + TermCodeSystem.class.getSimpleName() + " d SET d.myCurrentVersion = null").executeUpdate();
 				return null;
 			}
 		});
@@ -251,6 +280,8 @@ public abstract class BaseJpaTest {
 		txTemplate.execute(new TransactionCallback<Void>() {
 			@Override
 			public Void doInTransaction(TransactionStatus theStatus) {
+				entityManager.createQuery("DELETE from " + TermConceptProperty.class.getSimpleName() + " d").executeUpdate();
+				entityManager.createQuery("DELETE from " + TermConceptDesignation.class.getSimpleName() + " d").executeUpdate();
 				entityManager.createQuery("DELETE from " + TermConcept.class.getSimpleName() + " d").executeUpdate();
 				for (TermCodeSystem next : entityManager.createQuery("SELECT c FROM " + TermCodeSystem.class.getName() + " c", TermCodeSystem.class).getResultList()) {
 					next.setCurrentVersion(null);

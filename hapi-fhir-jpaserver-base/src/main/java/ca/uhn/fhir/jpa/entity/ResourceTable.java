@@ -4,7 +4,7 @@ package ca.uhn.fhir.jpa.entity;
  * #%L
  * HAPI FHIR JPA Server
  * %%
- * Copyright (C) 2014 - 2017 University Health Network
+ * Copyright (C) 2014 - 2018 University Health Network
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,22 +24,11 @@ import ca.uhn.fhir.jpa.search.IndexNonDeletedInterceptor;
 import ca.uhn.fhir.model.primitive.IdDt;
 import ca.uhn.fhir.rest.api.Constants;
 import ca.uhn.fhir.rest.server.exceptions.UnprocessableEntityException;
+import org.apache.commons.lang3.Validate;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
-import org.apache.lucene.analysis.core.LowerCaseFilterFactory;
-import org.apache.lucene.analysis.core.StopFilterFactory;
-import org.apache.lucene.analysis.miscellaneous.WordDelimiterFilterFactory;
-import org.apache.lucene.analysis.ngram.EdgeNGramFilterFactory;
-import org.apache.lucene.analysis.ngram.NGramFilterFactory;
-import org.apache.lucene.analysis.pattern.PatternTokenizerFactory;
-import org.apache.lucene.analysis.phonetic.PhoneticFilterFactory;
-import org.apache.lucene.analysis.snowball.SnowballPorterFilterFactory;
-import org.apache.lucene.analysis.standard.StandardFilterFactory;
-import org.apache.lucene.analysis.standard.StandardTokenizerFactory;
-import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.OptimisticLock;
 import org.hibernate.search.annotations.*;
-import org.hibernate.search.annotations.Parameter;
 
 import javax.persistence.*;
 import javax.persistence.Index;
@@ -51,7 +40,6 @@ import java.util.Set;
 
 import static org.apache.commons.lang3.StringUtils.defaultString;
 
-//@formatter:off
 @Indexed(interceptor = IndexNonDeletedInterceptor.class)
 @Entity
 @Table(name = "HFJ_RESOURCE", uniqueConstraints = {}, indexes = {
@@ -61,59 +49,17 @@ import static org.apache.commons.lang3.StringUtils.defaultString;
 	@Index(name = "IDX_RES_TYPE", columnList = "RES_TYPE"),
 	@Index(name = "IDX_INDEXSTATUS", columnList = "SP_INDEX_STATUS")
 })
-@AnalyzerDefs({
-	@AnalyzerDef(name = "autocompleteEdgeAnalyzer",
-		tokenizer = @TokenizerDef(factory = PatternTokenizerFactory.class, params = {
-			@Parameter(name = "pattern", value = "(.*)"),
-			@Parameter(name = "group", value = "1")
-		}),
-		filters = {
-			@TokenFilterDef(factory = LowerCaseFilterFactory.class),
-			@TokenFilterDef(factory = StopFilterFactory.class),
-			@TokenFilterDef(factory = EdgeNGramFilterFactory.class, params = {
-				@Parameter(name = "minGramSize", value = "3"),
-				@Parameter(name = "maxGramSize", value = "50")
-			}),
-		}),
-	@AnalyzerDef(name = "autocompletePhoneticAnalyzer",
-		tokenizer = @TokenizerDef(factory = StandardTokenizerFactory.class),
-		filters = {
-			@TokenFilterDef(factory = StandardFilterFactory.class),
-			@TokenFilterDef(factory = StopFilterFactory.class),
-			@TokenFilterDef(factory = PhoneticFilterFactory.class, params = {
-				@Parameter(name = "encoder", value = "DoubleMetaphone")
-			}),
-			@TokenFilterDef(factory = SnowballPorterFilterFactory.class, params = {
-				@Parameter(name = "language", value = "English")
-			})
-		}),
-	@AnalyzerDef(name = "autocompleteNGramAnalyzer",
-		tokenizer = @TokenizerDef(factory = StandardTokenizerFactory.class),
-		filters = {
-			@TokenFilterDef(factory = WordDelimiterFilterFactory.class),
-			@TokenFilterDef(factory = LowerCaseFilterFactory.class),
-			@TokenFilterDef(factory = NGramFilterFactory.class, params = {
-				@Parameter(name = "minGramSize", value = "3"),
-				@Parameter(name = "maxGramSize", value = "20")
-			}),
-		}),
-	@AnalyzerDef(name = "standardAnalyzer",
-		tokenizer = @TokenizerDef(factory = StandardTokenizerFactory.class),
-		filters = {
-			@TokenFilterDef(factory = LowerCaseFilterFactory.class),
-		}),
-	@AnalyzerDef(name = "exactAnalyzer",
-		tokenizer = @TokenizerDef(factory = StandardTokenizerFactory.class),
-		filters = {
-		})
-}
-)
-//@formatter:on
 public class ResourceTable extends BaseHasResource implements Serializable {
 	static final int RESTYPE_LEN = 30;
 	private static final int MAX_LANGUAGE_LENGTH = 20;
 	private static final int MAX_PROFILE_LENGTH = 200;
 	private static final long serialVersionUID = 1L;
+
+//	@Transient
+//	private transient byte[] myResource;
+//
+//	@Transient
+//	private transient ResourceEncodingEnum myEncoding;
 
 	/**
 	 * Holds the narrative text only - Used for Fulltext searching but not directly stored in the DB
@@ -272,6 +218,15 @@ public class ResourceTable extends BaseHasResource implements Serializable {
 		getTags().add(tag);
 		return tag;
 	}
+
+//	public ResourceEncodingEnum getEncoding() {
+//		Validate.notNull(myEncoding, "myEncoding is null");
+//		return myEncoding;
+//	}
+//
+//	public void setEncoding(ResourceEncodingEnum theEncoding) {
+//		myEncoding = theEncoding;
+//	}
 
 	public String getHashSha256() {
 		return myHashSha256;
@@ -446,6 +401,15 @@ public class ResourceTable extends BaseHasResource implements Serializable {
 		myProfile = theProfile;
 	}
 
+//	public byte[] getResource() {
+//		Validate.notNull(myEncoding, "myEncoding is null");
+//		return myResource;
+//	}
+//
+//	public void setResource(byte[] theResource) {
+//		myResource = theResource;
+//	}
+
 	public Collection<ResourceLink> getResourceLinks() {
 		if (myResourceLinks == null) {
 			myResourceLinks = new ArrayList<>();
@@ -586,8 +550,8 @@ public class ResourceTable extends BaseHasResource implements Serializable {
 		myNarrativeText = theNarrativeText;
 	}
 
-	public ResourceHistoryTable toHistory(ResourceHistoryTable theResourceHistoryTable) {
-		ResourceHistoryTable retVal = theResourceHistoryTable != null ? theResourceHistoryTable : new ResourceHistoryTable();
+	public ResourceHistoryTable toHistory() {
+		ResourceHistoryTable retVal = new ResourceHistoryTable();
 
 		retVal.setResourceId(myId);
 		retVal.setResourceType(myResourceType);
@@ -595,9 +559,9 @@ public class ResourceTable extends BaseHasResource implements Serializable {
 
 		retVal.setPublished(getPublished());
 		retVal.setUpdated(getUpdated());
-		retVal.setEncoding(getEncoding());
+//		retVal.setEncoding(getEncoding());
 		retVal.setFhirVersion(getFhirVersion());
-		retVal.setResource(getResource());
+//		retVal.setResource(getResource());
 		retVal.setDeleted(getDeleted());
 		retVal.setForcedId(getForcedId());
 

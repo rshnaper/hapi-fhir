@@ -4,7 +4,7 @@ package ca.uhn.fhir.jpa.provider;
  * #%L
  * HAPI FHIR JPA Server
  * %%
- * Copyright (C) 2014 - 2017 University Health Network
+ * Copyright (C) 2014 - 2018 University Health Network
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,7 +39,7 @@ public abstract class BaseJpaSystemProviderDstu2Plus<T, MT> extends BaseJpaSyste
 		IBaseParameters retVal = ParametersUtil.newInstance(getContext());
 		
 		IPrimitiveType<?> string = ParametersUtil.createString(getContext(), "Marked " + count + " resources");
-		ParametersUtil.addParameterToParameters(getContext(), retVal, string, "status");
+		ParametersUtil.addParameterToParameters(getContext(), retVal, "status", string);
 
 		return retVal;
 	}
@@ -58,7 +58,7 @@ public abstract class BaseJpaSystemProviderDstu2Plus<T, MT> extends BaseJpaSyste
 		} else {
 			string = ParametersUtil.createString(getContext(), "Indexed " + count + " resources");
 		}
-		ParametersUtil.addParameterToParameters(getContext(), retVal, string, "status");
+		ParametersUtil.addParameterToParameters(getContext(), retVal, "status", string);
 
 		return retVal;
 	}

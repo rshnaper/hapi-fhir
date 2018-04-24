@@ -4,7 +4,7 @@ package ca.uhn.fhir.jpa.util;
  * #%L
  * HAPI FHIR JPA Server
  * %%
- * Copyright (C) 2014 - 2017 University Health Network
+ * Copyright (C) 2014 - 2018 University Health Network
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -96,7 +96,7 @@ public class TestUtil {
 			assertThat(joinColumn.name(), null);
 			ForeignKey fk = joinColumn.foreignKey();
 			Validate.notNull(fk);
-			Validate.isTrue(isNotBlank(fk.name()));
+			Validate.isTrue(isNotBlank(fk.name()), "Foreign key on " + ae.toString() + " has no name()");
 			Validate.isTrue(fk.name().startsWith("FK_"));
 			assertThat(fk.name(), theNames);
 		}
@@ -129,5 +129,20 @@ public class TestUtil {
 			Validate.isTrue(theNames.add(theName), "Duplicate name: " + theName);
 		}
 	}
+
+	public static void sleepAtLeast(int theMillis) {
+		long start = System.currentTimeMillis();
+		while (System.currentTimeMillis() <= start + theMillis) {
+			try {
+				long timeSinceStarted = System.currentTimeMillis() - start;
+				long timeToSleep = Math.max(0, theMillis - timeSinceStarted);
+				ourLog.info("Sleeping for {}ms", timeToSleep);
+				Thread.sleep(timeToSleep);
+			} catch (InterruptedException theE) {
+				theE.printStackTrace();
+			}
+		}
+	}
+
 
 }
